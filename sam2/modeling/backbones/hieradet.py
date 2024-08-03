@@ -11,6 +11,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+import math
+
 from sam2.modeling.backbones.utils import (
     PatchEmbed,
     window_partition,
@@ -55,6 +57,9 @@ class MultiScaleAttention(nn.Module):
         self.qkv = nn.Linear(dim, dim_out * 3)
         self.proj = nn.Linear(dim_out, dim_out)
 
+    def register_attention_hook(self, hook):
+        self.attn_hook = hook
+
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         B, H, W, _ = x.shape
         # qkv with shape (B, H * W, 3, nHead, C)
@@ -69,7 +74,7 @@ class MultiScaleAttention(nn.Module):
             q = q.reshape(B, H * W, self.num_heads, -1)
 
         # Torch's SDPA expects [B, nheads, H*W, C] so we transpose
-        x = F.scaled_dot_product_attention(
+        x = self.scaled_dot_product_attention(
             q.transpose(1, 2),
             k.transpose(1, 2),
             v.transpose(1, 2),
@@ -81,6 +86,23 @@ class MultiScaleAttention(nn.Module):
         x = self.proj(x)
 
         return x
+    
+    def scaled_dot_product_attention(self, query, key, value, attn_mask=None, scale=None) -> torch.Tensor:
+        L, S = query.size(-2), key.size(-2)
+        scale_factor = 1 / math.sqrt(query.size(-1)) if scale is None else scale
+        attn_bias = torch.zeros(L, S, dtype=query.dtype)
+
+        if attn_mask is not None:
+            if attn_mask.dtype == torch.bool:
+                attn_bias.masked_fill_(attn_mask.logical_not(), float("-inf"))
+            else:
+                attn_bias += attn_mask
+        attn_weight = query @ key.transpose(-2, -1) * scale_factor
+        attn_weight += attn_bias
+        attn_weight = torch.softmax(attn_weight, dim=-1)
+        if self.attn_hook:
+            self.attn_hook(attn_weight)
+        return attn_weight @ value
 
 
 class MultiScaleBlock(nn.Module):
