@@ -90,7 +90,7 @@ class MultiScaleAttention(nn.Module):
     def scaled_dot_product_attention(self, query, key, value, attn_mask=None, scale=None) -> torch.Tensor:
         L, S = query.size(-2), key.size(-2)
         scale_factor = 1 / math.sqrt(query.size(-1)) if scale is None else scale
-        attn_bias = torch.zeros(L, S, dtype=query.dtype)
+        attn_bias = torch.zeros(L, S, dtype=query.dtype, device="cuda")
 
         if attn_mask is not None:
             if attn_mask.dtype == torch.bool:
