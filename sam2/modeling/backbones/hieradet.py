@@ -59,6 +59,7 @@ class MultiScaleAttention(nn.Module):
         self.proj = nn.Linear(dim_out, dim_out)
 
     def register_attention_hook(self, hook):
+        print('hook registered!!')
         self.attn_hook = hook
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
