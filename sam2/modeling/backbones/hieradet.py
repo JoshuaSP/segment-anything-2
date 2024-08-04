@@ -52,6 +52,7 @@ class MultiScaleAttention(nn.Module):
         self.num_heads = num_heads
         head_dim = dim_out // num_heads
         self.scale = head_dim**-0.5
+        self.attn_hook = None
 
         self.q_pool = q_pool
         self.qkv = nn.Linear(dim, dim_out * 3)
