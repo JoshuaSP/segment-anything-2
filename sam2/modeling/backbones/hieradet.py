@@ -102,7 +102,7 @@ class MultiScaleAttention(nn.Module):
         attn_weight += attn_bias
         attn_weight = torch.softmax(attn_weight, dim=-1)
         if self.attn_hook:
-            self.attn_hook(attn_weight)
+            self.attn_hook(key=key, query=query, attn_weight=attn_weight, value=value)
         return attn_weight @ value
 
 
