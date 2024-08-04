@@ -68,9 +68,6 @@ class TwoWayTransformer(nn.Module):
         )
         self.norm_final_attn = nn.LayerNorm(embedding_dim)
 
-    def register_attention_hook(self, hook):
-        self.final_attn_token_to_image.attn_hook = hook
-
     def forward(
         self,
         image_embedding: Tensor,
@@ -210,14 +207,13 @@ class Attention(nn.Module):
         downsample_rate: int = 1,
         dropout: float = 0.0,
         kv_in_dim: int = None,
-        attn_hook = None
     ) -> None:
         super().__init__()
         self.embedding_dim = embedding_dim
         self.kv_in_dim = kv_in_dim if kv_in_dim is not None else embedding_dim
         self.internal_dim = embedding_dim // downsample_rate
         self.num_heads = num_heads
-        self.attn_hook = attn_hook
+        self.attn_hook = None
         assert (
             self.internal_dim % num_heads == 0
         ), "num_heads must divide embedding_dim."
@@ -228,6 +224,10 @@ class Attention(nn.Module):
         self.out_proj = nn.Linear(self.internal_dim, embedding_dim)
 
         self.dropout_p = dropout
+    
+    def register_attention_hook(self, hook):
+        self.final_attn_token_to_image.attn_hook = hook
+
 
     def _separate_heads(self, x: Tensor, num_heads: int) -> Tensor:
         b, n, c = x.shape
