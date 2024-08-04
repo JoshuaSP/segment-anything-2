@@ -68,6 +68,9 @@ class TwoWayTransformer(nn.Module):
         )
         self.norm_final_attn = nn.LayerNorm(embedding_dim)
 
+    def register_attention_hook(self, hook):
+        self.final_attn_token_to_image.attn_hook = hook
+
     def forward(
         self,
         image_embedding: Tensor,
@@ -109,6 +112,7 @@ class TwoWayTransformer(nn.Module):
         q = queries + point_embedding
         k = keys + image_pe
         attn_out = self.final_attn_token_to_image(q=q, k=k, v=keys)
+
         queries = queries + attn_out
         queries = self.norm_final_attn(queries)
 
@@ -206,12 +210,14 @@ class Attention(nn.Module):
         downsample_rate: int = 1,
         dropout: float = 0.0,
         kv_in_dim: int = None,
+        attn_hook = None
     ) -> None:
         super().__init__()
         self.embedding_dim = embedding_dim
         self.kv_in_dim = kv_in_dim if kv_in_dim is not None else embedding_dim
         self.internal_dim = embedding_dim // downsample_rate
         self.num_heads = num_heads
+        self.attn_hook = attn_hook
         assert (
             self.internal_dim % num_heads == 0
         ), "num_heads must divide embedding_dim."
@@ -252,12 +258,29 @@ class Attention(nn.Module):
             enable_math=(OLD_GPU and dropout_p > 0.0) or MATH_KERNEL_ON,
             enable_mem_efficient=OLD_GPU,
         ):
-            out = F.scaled_dot_product_attention(q, k, v, dropout_p=dropout_p)
+            out = self.scaled_dot_product_attention(q, k, v, dropout_p=dropout_p)
 
         out = self._recombine_heads(out)
         out = self.out_proj(out)
 
         return out
+    
+    def scaled_dot_product_attention(self, query, key, value, attn_mask=None, scale=None) -> torch.Tensor:
+        L, S = query.size(-2), key.size(-2)
+        scale_factor = 1 / math.sqrt(query.size(-1)) if scale is None else scale
+        attn_bias = torch.zeros(L, S, dtype=query.dtype, device="cuda")
+
+        if attn_mask is not None:
+            if attn_mask.dtype == torch.bool:
+                attn_bias.masked_fill_(attn_mask.logical_not(), float("-inf"))
+            else:
+                attn_bias += attn_mask
+        attn_weight = query @ key.transpose(-2, -1) * scale_factor
+        attn_weight += attn_bias
+        attn_weight = torch.softmax(attn_weight, dim=-1)
+        if self.attn_hook:
+            self.attn_hook(key=key, query=query, attn_weight=attn_weight, value=value)
+        return attn_weight @ value
 
 
 class RoPEAttention(Attention):
