@@ -62,7 +62,7 @@ class MultiScaleAttention(nn.Module):
         self.attn_hook = hook
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        print(x.shape)
+        print("xcxc multiscaleattention", x.shape) 
         B, H, W, _ = x.shape
         # qkv with shape (B, H * W, 3, nHead, C)
         qkv = self.qkv(x).reshape(B, H * W, 3, self.num_heads, -1)
@@ -159,6 +159,7 @@ class MultiScaleBlock(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         shortcut = x  # B, H, W, C
+        print("xcxc multiscaleblock - ", x.shape)
         x = self.norm1(x)
 
         # Skip connection
@@ -301,7 +302,9 @@ class Hiera(nn.Module):
         return pos_embed
 
     def forward(self, x: torch.Tensor) -> List[torch.Tensor]:
+        print("xcxc hiera", x.shape)
         x = self.patch_embed(x)
+        print("xcxc hiera post patch embed", x.shape)
         # x: (B, H, W, C)
 
         # Add pos embed
