@@ -258,7 +258,7 @@ class Attention(nn.Module):
             enable_math=(OLD_GPU and dropout_p > 0.0) or MATH_KERNEL_ON,
             enable_mem_efficient=OLD_GPU,
         ):
-            out = self.scaled_dot_product_attention(q, k, v, dropout_p=dropout_p)
+            out = self.scaled_dot_product_attention(q, k, v)
 
         out = self._recombine_heads(out)
         out = self.out_proj(out)
