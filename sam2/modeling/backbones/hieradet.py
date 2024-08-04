@@ -62,6 +62,7 @@ class MultiScaleAttention(nn.Module):
         self.attn_hook = hook
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        print(x.shape)
         B, H, W, _ = x.shape
         # qkv with shape (B, H * W, 3, nHead, C)
         qkv = self.qkv(x).reshape(B, H * W, 3, self.num_heads, -1)
