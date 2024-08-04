@@ -315,4 +315,6 @@ class Hiera(nn.Module):
                 feats = x.permute(0, 3, 1, 2)
                 outputs.append(feats)
 
+        for output in outputs:
+            print("xcxc output shape", output.shape)
         return outputs

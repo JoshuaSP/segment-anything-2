@@ -110,6 +110,7 @@ class FpnNeck(nn.Module):
         n = len(self.convs) - 1
         for i in range(n, -1, -1):
             x = xs[i]
+            print("xcxc", x.shape)
             lateral_features = self.convs[n - i](x)
             if i in self.fpn_top_down_levels and prev_features is not None:
                 top_down_features = F.interpolate(
