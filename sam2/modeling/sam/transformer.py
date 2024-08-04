@@ -226,7 +226,7 @@ class Attention(nn.Module):
         self.dropout_p = dropout
     
     def register_attention_hook(self, hook):
-        self.final_attn_token_to_image.attn_hook = hook
+        self.attn_hook = hook
 
 
     def _separate_heads(self, x: Tensor, num_heads: int) -> Tensor:
